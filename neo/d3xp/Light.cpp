@@ -228,7 +228,7 @@ idLight::idLight():
 	fadeStart			= 0;
 	fadeEnd				= 0;
 	soundWasPlaying		= false;
-	
+
 	// Stradex begin
 	canBeCsTarget		= true; //added for coop
 	eventSyncVital = false;
