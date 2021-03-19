@@ -3,7 +3,7 @@
 
 Doom 3 BFG Edition GPL Source Code
 Copyright (C) 1993-2012 id Software LLC, a ZeniMax Media company.
-Copyright (C) 2014-2016 Robert Beckebans
+Copyright (C) 2014-2020 Robert Beckebans
 Copyright (C) 2014-2016 Kot in Action Creative Artel
 
 This file is part of the Doom 3 BFG Edition GPL Source Code ("Doom 3 BFG Edition Source Code").
@@ -367,6 +367,40 @@ typedef enum
 
 class idSoundEmitter;
 
+// RB: predefined Quake 1 light styles
+static char* predef_lightstyles[] =
+{
+	"m",
+	"mmnmmommommnonmmonqnmmo",
+	"abcdefghijklmnopqrstuvwxyzyxwvutsrqponmlkjihgfedcba",
+	"mmmmmaaaaammmmmaaaaaabcdefgabcdefg",
+	"mamamamamama",
+	"jklmnopqrstuvwxyzyxwvutsrqponmlkj",
+	"nmonqnmomnmomomno",
+	"mmmaaaabcdefgmmmmaaaammmaamm",
+	"mmmaaammmaaammmabcdefaaaammmmabcdefmmmaaaa",
+	"aaaaaaaazzzzzzzz",
+	"mmamammmmammamamaaamammma",
+	"abcdefghijklmnopqrrqponmlkjihgfedcba"
+};
+
+static char* predef_lightstylesinfo[] =
+{
+	"Normal",
+	"Flicker A",
+	"Slow Strong Pulse",
+	"Candle A",
+	"Fast Strobe",
+	"Gentle Pulse",
+	"Flicker B",
+	"Candle B",
+	"Candle C",
+	"Slow Strobe",
+	"Fluorescent Flicker",
+	"Slow Pulse (no black)"
+};
+// RB end
+
 class idMaterial : public idDecl
 {
 public:
@@ -496,6 +530,14 @@ public:
 	bool				UseUnsmoothedTangents() const
 	{
 		return unsmoothedTangents;
+	}
+
+	// RB: characters and models that baked in Blender or Substance designer use the newer
+	// Mikkelsen tangent space standard.
+	// see: https://bgolus.medium.com/generating-perfect-normal-maps-for-unity-f929e673fc57
+	bool				UseMikkTSpace() const
+	{
+		return mikktspace;
 	}
 
 	// by default, monsters can have blood overlays placed on them, but this can
@@ -891,6 +933,7 @@ private:
 	bool				blendLight;
 	bool				ambientLight;
 	bool				unsmoothedTangents;
+	bool				mikktspace;			// RB: use Mikkelsen tangent space standard for normal mapping
 	bool				hasSubview;			// mirror, remote render, etc
 	bool				allowOverlays;
 

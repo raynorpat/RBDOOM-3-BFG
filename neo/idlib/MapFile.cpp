@@ -3,7 +3,7 @@
 
 Doom 3 BFG Edition GPL Source Code
 Copyright (C) 1993-2012 id Software LLC, a ZeniMax Media company.
-Copyright (C) 2015 Robert Beckebans
+Copyright (C) 2015-2021 Robert Beckebans
 
 This file is part of the Doom 3 BFG Edition GPL Source Code ("Doom 3 BFG Edition Source Code").
 
@@ -97,16 +97,30 @@ idMapBrushSide::GetTextureVectors
 */
 void idMapBrushSide::GetTextureVectors( idVec4 v[2] ) const
 {
-	int i;
-	idVec3 texX, texY;
-
-	ComputeAxisBase( plane.Normal(), texX, texY );
-	for( i = 0; i < 2; i++ )
+	if( projection == PROJECTION_VALVE220 )
 	{
-		v[i][0] = texX[0] * texMat[i][0] + texY[0] * texMat[i][1];
-		v[i][1] = texX[1] * texMat[i][0] + texY[1] * texMat[i][1];
-		v[i][2] = texX[2] * texMat[i][0] + texY[2] * texMat[i][1];
-		v[i][3] = texMat[i][2] + ( origin * v[i].ToVec3() );
+		v[0][0] = texValve[0][0] * ( 1.0f / texScale[0] );
+		v[0][1] = texValve[0][1] * ( 1.0f / texScale[0] );
+		v[0][2] = texValve[0][2] * ( 1.0f / texScale[0] );
+		v[0][3] = texValve[0][3];
+
+		v[1][0] = texValve[1][0] * ( 1.0f / texScale[1] );
+		v[1][1] = texValve[1][1] * ( 1.0f / texScale[1] );
+		v[1][2] = texValve[1][2] * ( 1.0f / texScale[1] );
+		v[1][3] = texValve[1][3];
+	}
+	else
+	{
+		idVec3 texX, texY;
+
+		ComputeAxisBase( plane.Normal(), texX, texY );
+		for( int i = 0; i < 2; i++ )
+		{
+			v[i][0] = texX[0] * texMat[i][0] + texY[0] * texMat[i][1];
+			v[i][1] = texX[1] * texMat[i][0] + texY[1] * texMat[i][1];
+			v[i][2] = texX[2] * texMat[i][0] + texY[2] * texMat[i][1];
+			v[i][3] = texMat[i][2] + ( origin * v[i].ToVec3() );
+		}
 	}
 }
 
@@ -559,6 +573,122 @@ idMapBrush* idMapBrush::ParseQ3( idLexer& src, const idVec3& origin )
 }
 
 /*
+=================
+idMapBrush::ParseValve220
+=================
+*/
+idMapBrush* idMapBrush::ParseValve220( idLexer& src, const idVec3& origin )
+{
+	float scale[2], rotate;
+	idVec3 planepts[3];
+	idToken token;
+	idList<idMapBrushSide*> sides;
+	idMapBrushSide*	side;
+	idDict epairs;
+
+	do
+	{
+		if( src.CheckTokenString( "}" ) )
+		{
+			break;
+		}
+
+		side = new( TAG_IDLIB ) idMapBrushSide();
+		sides.Append( side );
+
+		// read the three point plane definition
+		if( !src.Parse1DMatrix( 3, planepts[0].ToFloatPtr() ) ||
+				!src.Parse1DMatrix( 3, planepts[1].ToFloatPtr() ) ||
+				!src.Parse1DMatrix( 3, planepts[2].ToFloatPtr() ) )
+		{
+			src.Error( "idMapBrush::ParseQ3: unable to read brush side plane definition" );
+			sides.DeleteContents( true );
+			return NULL;
+		}
+
+		// backup source points
+		side->planepts[0] = planepts[0];
+		side->planepts[1] = planepts[1];
+		side->planepts[2] = planepts[2];
+
+		planepts[0] -= origin;
+		planepts[1] -= origin;
+		planepts[2] -= origin;
+
+		side->plane.FromPoints( planepts[0], planepts[1], planepts[2] );
+		//side->plane.FromPoints( planepts[2], planepts[1], planepts[0] );
+
+		// read the material
+		if( !src.ReadTokenOnLine( &token ) )
+		{
+			src.Error( "idMapBrush::ParseQ3: unable to read brush side material" );
+			sides.DeleteContents( true );
+			return NULL;
+		}
+
+		// we have an implicit 'textures/' in the old format
+		side->material = "textures/" + token;
+		side->projection = idMapBrushSide::PROJECTION_VALVE220;
+
+		for( int axis = 0; axis < 2; axis++ )
+		{
+			src.ExpectTokenString( "[" );
+
+			for( int comp = 0; comp < 4; comp++ )
+			{
+				side->texValve[axis][comp] = src.ParseFloat();
+			}
+
+			src.ExpectTokenString( "]" );
+		}
+
+		// read the texture rotate and scale
+		rotate = src.ParseFloat();
+
+		scale[0] = src.ParseFloat();
+		scale[1] = src.ParseFloat();
+
+		if( scale[0] < idMath::FLT_EPSILON )
+		{
+			scale[0] = 1.0f;
+		}
+		if( scale[1] < idMath::FLT_EPSILON )
+		{
+			scale[1] = 1.0f;
+		}
+
+		side->texScale[0] = scale[0];
+		side->texScale[1] = scale[1];
+
+		side->texMat[0] = idVec3( 0.03125f, 0.0f, 0.0f );
+		side->texMat[1] = idVec3( 0.0f, 0.03125f, 0.0f );
+		side->origin = origin;
+
+		// Q2 allowed override of default flags and values, but we don't any more
+		if( src.ReadTokenOnLine( &token ) )
+		{
+			if( src.ReadTokenOnLine( &token ) )
+			{
+				if( src.ReadTokenOnLine( &token ) )
+				{
+				}
+			}
+		}
+	}
+	while( 1 );
+
+	idMapBrush* brush = new( TAG_IDLIB ) idMapBrush();
+	for( int i = 0; i < sides.Num(); i++ )
+	{
+		brush->AddSide( sides[i] );
+	}
+
+	brush->epairs = epairs;
+
+	return brush;
+}
+
+/*
 ============
 idMapBrush::Write
 ============
@@ -588,6 +718,54 @@ bool idMapBrush::Write( idFile* fp, int primitiveNum, const idVec3& origin ) con
 	}
 
 	fp->WriteFloatString( " }\n}\n" );
+
+	return true;
+}
+
+/*
+============
+RB idMapBrush::WriteValve220
+============
+*/
+bool idMapBrush::WriteValve220( idFile* fp, int primitiveNum, const idVec3& origin ) const
+{
+	int i;
+	idMapBrushSide* side;
+
+	fp->WriteFloatString( "// brush %d\n{\n", primitiveNum );
+
+	// write brush epairs
+	for( i = 0; i < epairs.GetNumKeyVals(); i++ )
+	{
+		fp->WriteFloatString( "  \"%s\" \"%s\"\n", epairs.GetKeyVal( i )->GetKey().c_str(), epairs.GetKeyVal( i )->GetValue().c_str() );
+	}
+
+	// write brush sides
+	for( i = 0; i < GetNumSides(); i++ )
+	{
+		side = GetSide( i );
+		fp->WriteFloatString( "( %f %f %f ) ( %f %f %f ) ( %f %f %f )",
+							  side->planepts[0][0], side->planepts[0][1], side->planepts[0][2],
+							  side->planepts[1][0], side->planepts[1][1], side->planepts[1][2],
+							  side->planepts[2][0], side->planepts[2][1], side->planepts[2][2] );
+
+		// strip off textures/
+		if( idStr::Icmpn( side->material.c_str(), "textures/", 9 ) == 0 )
+		{
+			fp->WriteFloatString( " %s ", side->material.c_str() + 9 );
+		}
+		else
+		{
+			fp->WriteFloatString( " %s ", side->material.c_str() );
+		}
+
+		fp->WriteFloatString( "[ %f %f %f %f ] [ %f %f %f %f ] 0 %f %f 0 0 0\n",
+							  side->texValve[0][0], side->texValve[0][1], side->texValve[0][2], side->texValve[0][3],
+							  side->texValve[1][0], side->texValve[1][1], side->texValve[1][2], side->texValve[1][3],
+							  side->texScale[0], side->texScale[1] );
+	}
+
+	fp->WriteFloatString( "}\n" );
 
 	return true;
 }
@@ -712,11 +890,11 @@ idMapEntity* idMapEntity::Parse( idLexer& src, bool worldSpawn, float version )
 				mapEnt->AddPrimitive( mapMesh );
 			}
 			// RB end
-			// assume it's a brush in Q3 or older style
+			// assume it's a brush in Valve 220 style from TrenchBroom
 			else
 			{
 				src.UnreadToken( &token );
-				mapBrush = idMapBrush::ParseQ3( src, origin );
+				mapBrush = idMapBrush::ParseValve220( src, origin );
 				if( !mapBrush )
 				{
 					return NULL;
@@ -765,7 +943,7 @@ idMapEntity* idMapEntity::Parse( idLexer& src, bool worldSpawn, float version )
 idMapEntity::Write
 ============
 */
-bool idMapEntity::Write( idFile* fp, int entityNum ) const
+bool idMapEntity::Write( idFile* fp, int entityNum, bool valve220 ) const
 {
 	int i;
 	idMapPrimitive* mapPrim;
@@ -789,7 +967,14 @@ bool idMapEntity::Write( idFile* fp, int entityNum ) const
 		switch( mapPrim->GetType() )
 		{
 			case idMapPrimitive::TYPE_BRUSH:
-				static_cast<idMapBrush*>( mapPrim )->Write( fp, i, origin );
+				if( valve220 )
+				{
+					static_cast<idMapBrush*>( mapPrim )->WriteValve220( fp, i, origin );
+				}
+				else
+				{
+					static_cast<idMapBrush*>( mapPrim )->Write( fp, i, origin );
+				}
 				break;
 			case idMapPrimitive::TYPE_PATCH:
 				static_cast<idMapPatch*>( mapPrim )->Write( fp, i, origin );
@@ -1174,10 +1359,11 @@ bool idMapFile::Parse( const char* filename, bool ignoreRegion, bool osPath )
 		return false;
 	}
 
-	if( token == "{" )
-	{
-		isJSON = true;
-	}
+	// RB: TODO check for JSON in another way
+	//if( token == "{" )
+	//{
+	//	isJSON = true;
+	//}
 
 	if( isJSON )
 	{
@@ -1247,6 +1433,12 @@ bool idMapFile::Parse( const char* filename, bool ignoreRegion, bool osPath )
 		{
 			src.ReadTokenOnLine( &token );
 			version = token.GetFloatValue();
+		}
+		else
+		{
+			// Valve 220 format and idMapEntity::Parse will expect {
+			src.UnreadToken( &token );
+			valve220Format = true;
 		}
 
 		while( 1 )
@@ -1368,11 +1560,18 @@ bool idMapFile::Write( const char* fileName, const char* ext, bool fromBasePath 
 		return false;
 	}
 
-	fp->WriteFloatString( "Version %f\n", ( float ) CURRENT_MAP_VERSION );
+	if( valve220Format )
+	{
+		fp->WriteFloatString( "// Game: Doom 3 BFG\n// Format: Doom3 (Valve)\n" );
+	}
+	else
+	{
+		fp->WriteFloatString( "Version %f\n", ( float ) CURRENT_MAP_VERSION );
+	}
 
 	for( i = 0; i < entities.Num(); i++ )
 	{
-		entities[i]->Write( fp, i );
+		entities[i]->Write( fp, i, valve220Format );
 	}
 
 	idLib::fileSystem->CloseFile( fp );
@@ -1463,6 +1662,31 @@ idMapEntity* idMapFile::FindEntity( const char* name )
 	{
 		idMapEntity* ent = entities[i];
 		if( idStr::Icmp( ent->epairs.GetString( "name" ), name ) == 0 )
+		{
+			return ent;
+		}
+	}
+	return NULL;
+}
+
+/*
+===============
+RB idMapFile::FindEntityAtOrigin
+===============
+*/
+idMapEntity* idMapFile::FindEntityAtOrigin( const idVec3& org )
+{
+	idBounds bo( org );
+	bo.ExpandSelf( 0.125f );
+
+	for( int i = 0; i < entities.Num(); i++ )
+	{
+		idMapEntity* ent = entities[i];
+
+		idVec3 entPos;
+		ent->epairs.GetVector( "origin", "", entPos );
+
+		if( bo.ContainsPoint( entPos ) )
 		{
 			return ent;
 		}

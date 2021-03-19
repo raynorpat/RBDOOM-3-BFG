@@ -3653,7 +3653,7 @@ cm_model_t* idCollisionModelManagerLocal::LoadBinaryModelFromFile( idFile* file,
 	assert( model->polygonRefBlocks == NULL || ( model->polygonRefBlocks->next == NULL && model->polygonRefBlocks->nextRef == NULL ) );
 
 	// RB: FIXME
-#if !defined(__x86_64__) && !defined(_WIN64)
+#if !defined(__x86_64__) && !defined(_WIN64) && !defined(__PPC64__) && !defined(__e2k__) && !defined(__aarch64__) && !(defined(__mips64) || defined(__mips64_))
 	assert( model->polygonBlock->bytesRemaining == 0 );
 	assert( model->brushBlock->bytesRemaining == 0 );
 #endif
@@ -3855,8 +3855,8 @@ cm_model_t* idCollisionModelManagerLocal::LoadRenderModel( const char* fileName 
 	// only load ASE and LWO models
 	idStr( fileName ).ExtractFileExtension( extension );
 
-	// RB: DAE support
-	if( ( extension.Icmp( "ase" ) != 0 ) && ( extension.Icmp( "lwo" ) != 0 ) && ( extension.Icmp( "ma" ) != 0 ) && ( extension.Icmp( "dae" ) != 0 ) )
+	// RB: DAE and OBJ support
+	if( ( extension.Icmp( "ase" ) != 0 ) && ( extension.Icmp( "lwo" ) != 0 ) && ( extension.Icmp( "ma" ) != 0 ) && ( extension.Icmp( "dae" ) != 0 ) && ( extension.Icmp( "obj" ) != 0 ) )
 	{
 		return NULL;
 	}

@@ -68,6 +68,7 @@ class idThread;
 class idEditEntities;
 class idLocationEntity;
 class idMenuHandler_Shell;
+class EnvironmentProbe; // RB
 
 const int MAX_CLIENTS			= MAX_PLAYERS;
 const int MAX_CLIENTS_IN_PVS	= MAX_CLIENTS >> 3;
@@ -736,6 +737,8 @@ private:
 
 	idLocationEntity** 		locationEntities;		// for location names, etc
 
+	idList<EnvironmentProbe*> environmentProbes;	// RB
+
 	idCamera* 				camera;
 	const idMaterial* 		globalMaterial;			// for overriding everything
 
@@ -800,6 +803,9 @@ private:
 	void					MapPopulate();
 	void					MapClear( bool clearClients );
 
+	// RB: spawn environment probes if there aren't any by default
+	void					PopulateEnvironmentProbes();
+
 	pvsHandle_t				GetClientPVS( idPlayer* player, pvsType_t type );
 	void					SetupPlayerPVS();
 	void					FreePlayerPVS();
@@ -807,6 +813,8 @@ private:
 	void					SortActiveEntityList();
 	void					ShowTargets();
 	void					RunDebugInfo();
+
+	void					RunSharedThink();
 
 	void					InitScriptForMap();
 	void					SetScriptFPS( const float com_engineHz );

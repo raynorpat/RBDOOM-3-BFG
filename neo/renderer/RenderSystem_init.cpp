@@ -235,7 +235,7 @@ idCVar stereoRender_enable( "stereoRender_enable", "0", CVAR_INTEGER | CVAR_ARCH
 idCVar stereoRender_swapEyes( "stereoRender_swapEyes", "0", CVAR_BOOL | CVAR_ARCHIVE, "reverse eye adjustments" );
 idCVar stereoRender_deGhost( "stereoRender_deGhost", "0.05", CVAR_FLOAT | CVAR_ARCHIVE, "subtract from opposite eye to reduce ghosting" );
 
-idCVar r_useVirtualScreenResolution( "r_useVirtualScreenResolution", "1", CVAR_RENDERER | CVAR_BOOL | CVAR_ARCHIVE, "do 2D rendering at 640x480 and stretch to the current resolution" );
+idCVar r_useVirtualScreenResolution( "r_useVirtualScreenResolution", "0", CVAR_RENDERER | CVAR_BOOL | CVAR_ARCHIVE, "do 2D rendering at 640x480 and stretch to the current resolution" );
 
 // RB: shadow mapping parameters
 #if defined( USE_VULKAN )
@@ -280,7 +280,7 @@ idCVar r_hdrDebug( "r_hdrDebug", "0", CVAR_RENDERER | CVAR_FLOAT, "show scene lu
 idCVar r_ldrContrastThreshold( "r_ldrContrastThreshold", "1.1", CVAR_RENDERER | CVAR_FLOAT, "" );
 idCVar r_ldrContrastOffset( "r_ldrContrastOffset", "3", CVAR_RENDERER | CVAR_FLOAT, "" );
 
-idCVar r_useFilmicPostProcessEffects( "r_useFilmicPostProcessEffects", "1", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_BOOL, "apply several post process effects to mimic a filmic look" );
+idCVar r_useFilmicPostProcessing( "r_useFilmicPostProcessing", "1", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_BOOL, "apply several post process effects to mimic a filmic look" );
 
 #if defined( USE_VULKAN )
 	idCVar r_forceAmbient( "r_forceAmbient", "0.2", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_FLOAT, "render additional ambient pass to make the game less dark", 0.0f, 0.75f );
@@ -299,7 +299,7 @@ idCVar r_useHierarchicalDepthBuffer( "r_useHierarchicalDepthBuffer", "1", CVAR_R
 
 idCVar r_usePBR( "r_usePBR", "1", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_BOOL, "use PBR and Image Based Lighting instead of old Quake 4 style ambient lighting" );
 idCVar r_pbrDebug( "r_pbrDebug", "0", CVAR_RENDERER | CVAR_INTEGER, "show which materials have PBR support (green = PBR, red = oldschool D3)" );
-idCVar r_showViewEnvprobes( "r_showViewEnvprobes", "1", CVAR_RENDERER | CVAR_INTEGER, "1 = displays the bounding boxes of all view environment probes, 2 = show irradiance" );
+idCVar r_showViewEnvprobes( "r_showViewEnvprobes", "0", CVAR_RENDERER | CVAR_INTEGER, "1 = displays the bounding boxes of all view environment probes, 2 = show irradiance" );
 
 idCVar r_exposure( "r_exposure", "0.5", CVAR_ARCHIVE | CVAR_RENDERER | CVAR_FLOAT, "HDR exposure or LDR brightness [0.0 .. 1.0]", 0.0f, 1.0f );
 // RB end
@@ -307,7 +307,6 @@ idCVar r_exposure( "r_exposure", "0.5", CVAR_ARCHIVE | CVAR_RENDERER | CVAR_FLOA
 const char* fileExten[3] = { "tga", "png", "jpg" };
 const char* envDirection[6] = { "_px", "_nx", "_py", "_ny", "_pz", "_nz" };
 const char* skyDirection[6] = { "_forward", "_back", "_left", "_right", "_up", "_down" };
-
 
 
 
@@ -1528,7 +1527,7 @@ void R_InitMaterials()
 	}
 	tr.defaultPointLight = declManager->FindMaterial( "lights/defaultPointLight" );
 	tr.defaultProjectedLight = declManager->FindMaterial( "lights/defaultProjectedLight" );
-	tr.whiteMaterial = declManager->FindMaterial( "_white" );
+	tr.whiteMaterial = declManager->FindMaterial( "_white", false );
 	tr.charSetMaterial = declManager->FindMaterial( "textures/bigchars" );
 
 	// RB: create implicit material
@@ -2309,10 +2308,12 @@ idRenderSystemLocal::GetVirtualWidth
 */
 int idRenderSystemLocal::GetVirtualWidth() const
 {
-	if( r_useVirtualScreenResolution.GetBool() )
-	{
-		return SCREEN_WIDTH;
-	}
+// jmarshall - never strech
+	//if( r_useVirtualScreenResolution.GetBool() )
+	//{
+	//	return SCREEN_WIDTH;
+	//}
+// jmarshall end
 	return glConfig.nativeScreenWidth;
 }
 
@@ -2323,10 +2324,12 @@ idRenderSystemLocal::GetVirtualHeight
 */
 int idRenderSystemLocal::GetVirtualHeight() const
 {
-	if( r_useVirtualScreenResolution.GetBool() )
-	{
-		return SCREEN_HEIGHT;
-	}
+// jmarshall - never strech
+	//if( r_useVirtualScreenResolution.GetBool() )
+	//{
+	//	return SCREEN_HEIGHT;
+	//}
+// jmarshall end
 	return glConfig.nativeScreenHeight;
 }
 

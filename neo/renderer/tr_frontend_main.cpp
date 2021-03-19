@@ -542,17 +542,23 @@ void R_RenderView( viewDef_t* parms )
 	// RB: find closest environment probe
 	if( tr.viewDef->areaNum != -1 && !tr.viewDef->isSubview )
 	{
-		float bestDist = 90000.0f;
+		float bestDist = idMath::INFINITY;
+
+		tr.viewDef->irradianceImage = globalImages->defaultUACIrradianceCube;
+		tr.viewDef->radianceImage = globalImages->defaultUACRadianceCube;
 
 		for( viewEnvprobe_t* vProbe = tr.viewDef->viewEnvprobes; vProbe != NULL; vProbe = vProbe->next )
 		{
-			float dist = ( tr.viewDef->renderView.vieworg  - vProbe->globalOrigin ).LengthSqr();
-			if( dist < bestDist )
+			float dist = ( tr.viewDef->renderView.vieworg - vProbe->globalOrigin ).Length();
+			if( ( dist < bestDist ) )
 			{
-				tr.viewDef->irradianceImage = vProbe->irradianceImage;
-				tr.viewDef->radianceImage = vProbe->radianceImage;
+				if( vProbe->irradianceImage->IsLoaded() && !vProbe->irradianceImage->IsDefaulted() )
+				{
+					tr.viewDef->irradianceImage = vProbe->irradianceImage;
+					tr.viewDef->radianceImage = vProbe->radianceImage;
 
-				bestDist = dist;
+					bestDist = dist;
+				}
 			}
 		}
 	}

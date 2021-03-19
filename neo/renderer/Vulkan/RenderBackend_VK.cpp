@@ -83,7 +83,7 @@ static const char* g_debugInstanceExtensions[ g_numDebugInstanceExtensions ] =
 static const int g_numValidationLayers = 1;
 static const char* g_validationLayers[ g_numValidationLayers ] =
 {
-	"VK_LAYER_LUNARG_standard_validation"
+	"VK_LAYER_KHRONOS_validation"
 };
 
 #define ID_VK_ERROR_STRING( x ) case static_cast< int >( x ): return #x
@@ -714,9 +714,9 @@ static void CreateLogicalDeviceAndQueues()
 	VkPhysicalDeviceFeatures deviceFeatures = {};
 	deviceFeatures.textureCompressionBC = VK_TRUE;
 	deviceFeatures.imageCubeArray = VK_TRUE;
-	deviceFeatures.depthClamp = VK_TRUE;
+	deviceFeatures.depthClamp = VK_FALSE;
 	deviceFeatures.depthBiasClamp = VK_TRUE;
-	deviceFeatures.depthBounds = VK_TRUE;
+	deviceFeatures.depthBounds = vkcontext.physicalDeviceFeatures.depthBounds;
 	deviceFeatures.fillModeNonSolid = VK_TRUE;
 	deviceFeatures.samplerAnisotropy = vkcontext.physicalDeviceFeatures.samplerAnisotropy; // RB
 
@@ -2279,7 +2279,7 @@ idRenderBackend::GL_DepthBoundsTest
 */
 void idRenderBackend::GL_DepthBoundsTest( const float zmin, const float zmax )
 {
-	if( zmin > zmax )
+	if( !vkcontext.physicalDeviceFeatures.depthBounds || zmin > zmax )
 	{
 		return;
 	}

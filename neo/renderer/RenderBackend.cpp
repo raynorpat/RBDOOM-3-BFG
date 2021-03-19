@@ -1746,7 +1746,14 @@ void idRenderBackend::RenderInteractions( const drawSurf_t* surfList, const view
 
 		// apply the world-global overbright and the 2x factor for specular
 		const idVec4 diffuseColor = lightColor;
-		const idVec4 specularColor = lightColor * 2.0f;
+// jmarshall
+		idVec4 specularColor = lightColor * 2.0f;
+
+		if( vLight->lightDef->parms.noSpecular )
+		{
+			specularColor.Zero();
+		}
+// jmarshall end
 
 		float lightTextureMatrix[16];
 		if( lightStage->texture.hasMatrix )
@@ -2074,6 +2081,11 @@ void idRenderBackend::AmbientPass( const drawSurf_t* const* drawSurfs, int numDr
 	const bool hdrIsActive = ( r_useHDR.GetBool() && globalFramebuffers.hdrFBO != NULL && globalFramebuffers.hdrFBO->IsBound() );
 
 	if( numDrawSurfs == 0 )
+	{
+		return;
+	}
+
+	if( !drawSurfs )
 	{
 		return;
 	}
@@ -6003,7 +6015,7 @@ void idRenderBackend::PostProcess( const void* data )
 {
 	// only do the post process step if resolution scaling is enabled. Prevents the unnecessary copying of the framebuffer and
 	// corresponding full screen quad pass.
-	if( rs_enable.GetInteger() == 0 && !r_useFilmicPostProcessEffects.GetBool() && r_antiAliasing.GetInteger() == 0 )
+	if( rs_enable.GetInteger() == 0 && !r_useFilmicPostProcessing.GetBool() && r_antiAliasing.GetInteger() == 0 )
 	{
 		return;
 	}
@@ -6113,7 +6125,7 @@ void idRenderBackend::PostProcess( const void* data )
 #endif
 	}
 
-	if( r_useFilmicPostProcessEffects.GetBool() )
+	if( r_useFilmicPostProcessing.GetBool() )
 	{
 		globalImages->currentRenderImage->CopyFramebuffer( viewport.x1, viewport.y1, viewport.GetWidth(), viewport.GetHeight() );
 

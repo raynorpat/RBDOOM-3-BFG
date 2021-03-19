@@ -1714,7 +1714,7 @@ void idRenderBackend::DBG_ShowViewEnvprobes()
 
 	GL_State( GLS_DEFAULT | GLS_CULL_TWOSIDED );
 
-	renderProgManager.BindShader_Environment();
+	renderProgManager.BindShader_Octahedron();
 
 	int count = 0;
 	for( viewEnvprobe_t* vProbe = viewDef->viewEnvprobes; vProbe != NULL; vProbe = vProbe->next )
@@ -3118,6 +3118,7 @@ void idRenderBackend::DBG_RenderDebugTools( drawSurf_t** drawSurfs, int numDrawS
 	}
 
 	renderLog.OpenMainBlock( MRB_DRAW_DEBUG_TOOLS );
+	renderLog.OpenBlock( "Render_DebugTools", colorGreen );
 	RENDERLOG_PRINTF( "---------- RB_RenderDebugTools ----------\n" );
 
 	GL_State( GLS_DEFAULT );
@@ -3168,6 +3169,7 @@ void idRenderBackend::DBG_RenderDebugTools( drawSurf_t** drawSurfs, int numDrawS
 	DBG_ShowDebugPolygons();
 	DBG_ShowTrace( drawSurfs, numDrawSurfs );
 
+	renderLog.CloseBlock();
 	renderLog.CloseMainBlock();
 }
 

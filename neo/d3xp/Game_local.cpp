@@ -1437,6 +1437,72 @@ void idGameLocal::MapPopulate()
 
 /*
 ===================
+RB idGameLocal::PopulateEnvironmentProbes
+===================
+*/
+void idGameLocal::PopulateEnvironmentProbes()
+{
+	idEntity* ent;
+
+	// check if there are already environment probes defined by the artist
+	int numEnvprobes = 0;
+
+	for( ent = spawnedEntities.Next(); ent != NULL; ent = ent->spawnNode.Next() )
+	{
+		if( !ent->IsType( EnvironmentProbe::Type ) )
+		{
+			continue;
+		}
+
+		numEnvprobes++;
+	}
+
+	if( numEnvprobes > 0 )
+	{
+		return;
+	}
+
+	const idDict* envProbeDef = gameLocal.FindEntityDefDict( "env_probe", false );
+	if( !envProbeDef )
+	{
+		Printf( "entityDef env_probe missing in base/def/" );
+		return;
+	}
+
+	// naive approach: place an env probe into the center of each BSP area
+
+	int	numAreas = gameRenderWorld->NumAreas();
+
+	for( int i = 0 ; i < numAreas ; i++ )
+	{
+		idBounds areaBounds = gameRenderWorld->AreaBounds( i );
+
+		idVec3 point = areaBounds.GetCenter();
+
+		int areaNum = gameRenderWorld->PointInArea( point );
+		if( areaNum < 0 )
+		{
+			Warning( "PopulateEnvironmentProbes: location '%i' is not in a valid area\n", i );
+			continue;
+		}
+
+		idDict args;
+		args.Set( "classname", "env_probe" );
+		args.Set( "origin", point.ToString() );
+
+		gameLocal.SpawnEntityDef( args, &ent );
+		if( !ent )
+		{
+			gameLocal.Error( "Couldn't spawn 'env_probe'" );
+		}
+
+		//environmentProbes.Append( probe );
+	}
+}
+// RB end
+
+/*
+===================
 idGameLocal::InitFromNewMap
 ===================
 */
@@ -1484,6 +1550,9 @@ void idGameLocal::InitFromNewMap( const char* mapName, idRenderWorld* renderWorl
 	num_coopentities = 0; //for coop
 
 	MapPopulate();
+
+	// RB
+	PopulateEnvironmentProbes();
 
 	mpGame.Reset();
 	mpGame.Precache();
@@ -1755,7 +1824,6 @@ bool idGameLocal::InitFromSaveGame( const char* mapName, idRenderWorld* renderWo
 	savegame.RestoreObjects();
 
 	mpGame.Reset();
-
 	mpGame.Precache();
 
 	// free up any unused animations
@@ -2029,11 +2097,13 @@ void idGameLocal::CacheDictionaryMedia( const idDict* dict )
 		if( kv->GetValue().Length() )
 		{
 			declManager->MediaPrint( "Precaching model %s\n", kv->GetValue().c_str() );
+
 			// precache model/animations
 			if( declManager->FindType( DECL_MODELDEF, kv->GetValue(), false ) == NULL )
 			{
 				// precache the render model
 				renderModelManager->FindModel( kv->GetValue() );
+
 				// precache .cm files only
 				collisionModelManager->LoadModel( kv->GetValue() );
 			}
@@ -2863,6 +2933,22 @@ void idGameLocal::RunEntityThink( idEntity& ent, idUserCmdMgr& userCmdMgr )
 
 idCVar g_recordTrace( "g_recordTrace", "0", CVAR_BOOL, "" );
 
+// jmarshall
+/*
+================
+idGameLocal::RunSharedThink
+================
+*/
+void idGameLocal::RunSharedThink( void )
+{
+	idEntity* ent;
+	for( ent = activeEntities.Next(); ent != NULL; ent = ent->activeNode.Next() )
+	{
+		ent->SharedThink();
+	}
+}
+// jmarshall end
+
 /*
 ================
 idGameLocal::RunFrame
@@ -3046,7 +3132,9 @@ void idGameLocal::RunFrame( idUserCmdMgr& cmdMgr, gameReturn_t& ret )
 			}
 
 			RunTimeGroup2( cmdMgr );
-
+// jmarshall
+			RunSharedThink();
+// jmarshall end
 			// Run catch-up for any client projectiles.
 			// This is done after the main think so that all projectiles will be up-to-date
 			// when snapshots are created.
@@ -4502,7 +4590,6 @@ void idGameLocal::SpawnMapEntities()
 	for( i = 1 ; i < numEntities ; i++ )
 	{
 		common->UpdateLevelLoadPacifier();
-
 
 		mapEnt = mapFile->GetEntity( i );
 		args = mapEnt->epairs;
