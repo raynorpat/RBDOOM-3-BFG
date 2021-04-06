@@ -119,13 +119,7 @@ void main( PS_IN fragment, out PS_OUT result )
 	float3 kD = ( float3( 1.0, 1.0, 1.0 ) - kS ) * ( 1.0 - metallic );
 
 #else
-	// HACK calculate roughness from D3 gloss maps
-	float Y = dot( LUMINANCE_SRGB.rgb, specMapSRGB.rgb );
-
-	//const float glossiness = clamp( 1.0 - specMapSRGB.r, 0.0, 0.98 );
-	const float glossiness = clamp( pow( Y, 1.0 / 2.0 ), 0.0, 0.98 );
-
-	const float roughness = 1.0 - glossiness;
+	const float roughness = EstimateLegacyRoughness( specMapSRGB.rgb );
 
 	half3 diffuseColor = diffuseMap;
 	half3 specularColor = specMap.rgb;
@@ -195,11 +189,30 @@ void main( PS_IN fragment, out PS_OUT result )
 
 	half3 lightColor = sRGBToLinearRGB( rpAmbientColor.rgb );
 
+#if 1 //defined(USE_TOON_SHADING)
+
+	// same global vector as in old D3 ambient_lighting
+	float3 lightVector = normalize( float3( 0.0f, 0.5f, 1.0f ) );
+	float ndotL = dot( globalNormal, lightVector );
+	float toonLambert = Toon_Lambert( ndotL );
+
+	half3 halfAngleVector = normalize( lightVector + globalEye );
+	half hdotN = clamp( dot3( halfAngleVector, globalNormal ), 0.0, 1.0 );
+
+	half rim =  1.0f - saturate( hdotN );
+	half rimPower = 8.0;
+	half3 rimLight = sRGBToLinearRGB( half3( 0.125 ) * 1.5 ) * irradiance * pow( rim, rimPower );
+
+	result.color.rgb = ( ( diffuseLight + specularLight ) * toonLambert * lightColor + rimLight ) * fragment.color.rgb;
+
+#else
 	//result.color.rgb = diffuseLight;
 	//result.color.rgb = diffuseLight * lightColor;
 	//result.color.rgb = specularLight;
 	result.color.rgb = ( diffuseLight + specularLight ) * lightColor * fragment.color.rgb;
 	//result.color.rgb = localNormal.xyz * 0.5 + 0.5;
 	//result.color.rgb = float3( ao );
+#endif
+
 	result.color.w = fragment.color.a;
 }

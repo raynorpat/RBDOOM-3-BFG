@@ -2,7 +2,7 @@
 ===========================================================================
 
 Doom 3 BFG Edition GPL Source Code
-Copyright (C) 2014-2020 Robert Beckebans
+Copyright (C) 2014-2021 Robert Beckebans
 
 This file is part of the Doom 3 BFG Edition GPL Source Code ("Doom 3 BFG Edition Source Code").
 
@@ -28,7 +28,7 @@ If you have questions concerning this license or the applicable additional terms
 
 // Normal Distribution Function ( NDF ) or D( h )
 // GGX ( Trowbridge-Reitz )
-half Distribution_GGX( half hdotN, half alpha )
+float Distribution_GGX( float hdotN, float alpha )
 {
 	// alpha is assumed to be roughness^2
 	float a2 = alpha * alpha;
@@ -54,7 +54,7 @@ half Distribution_GGX_1886( half hdotN, half alpha )
 }
 
 // Fresnel term F( v, h )
-// Fnone( v, h ) = F(0°) = specularColor
+// Fnone( v, h ) = F(0ï¿½) = specularColor
 half3 Fresnel_Schlick( half3 specularColor, half vDotN )
 {
 	return specularColor + ( 1.0 - specularColor ) * pow( 1.0 - vDotN, 5.0 );
@@ -66,9 +66,9 @@ half3 Fresnel_SchlickRoughness( half3 specularColor, half vDotN, half roughness 
 	return specularColor + ( max( half3( 1.0  - roughness ), specularColor ) - specularColor ) * pow( 1.0 - vDotN, 5.0 );
 }
 
-// Sébastien Lagarde proposes an empirical approach to derive the specular occlusion term from the diffuse occlusion term in [Lagarde14].
+// Sebastien Lagarde proposes an empirical approach to derive the specular occlusion term from the diffuse occlusion term in [Lagarde14].
 // The result does not have any physical basis but produces visually pleasant results.
-// See Sébastien Lagarde and Charles de Rousiers. 2014. Moving Frostbite to PBR.
+// See Sebastien Lagarde and Charles de Rousiers. 2014. Moving Frostbite to PBR.
 float ComputeSpecularAO( float vDotN, float ao, float roughness )
 {
 	return clamp( pow( vDotN + ao, exp2( -16.0 * roughness - 1.0 ) ) - 1.0 + ao, 0.0, 1.0 );
@@ -101,9 +101,49 @@ float Visibility_SmithGGX( half vdotN, half ldotN, float alpha )
 	return ( 1.0 / max( V1 * V2, 0.15 ) );
 }
 
+// HACK calculate roughness from D3 gloss maps
+float EstimateLegacyRoughness( float3 specMapSRGB )
+{
+	float Y = dot( LUMINANCE_SRGB.rgb, specMapSRGB );
+
+	//float glossiness = clamp( 1.0 - specMapSRGB.r, 0.0, 0.98 );
+	float glossiness = clamp( pow( Y, 1.0 / 2.0 ), 0.0, 0.98 );
+
+	float roughness = 1.0 - glossiness;
+
+	return roughness;
+}
+
+float Toon_Lambert( float ldotN )
+{
+#if 1
+	float toonLambert;
+
+	if( ldotN > 0.5 )
+	{
+		toonLambert = 0.3;
+	}
+	else if( ldotN > 0.25 )
+	{
+		toonLambert = 0.2;
+	}
+	else
+	{
+		toonLambert = ldotN > 0.0 ? 0.1 : 0.0;
+	}
+
+	toonLambert *= 2.0;
+
+#else
+	float toonLambert = smoothstep( 0.0, 0.01, ldotN );
+#endif
+
+	return toonLambert;
+}
 
 // Environment BRDF approximations
 // see s2013_pbs_black_ops_2_notes.pdf
+/*
 half a1vf( half g )
 {
 	return ( 0.25 * g + 0.75 );
@@ -142,8 +182,8 @@ half3 EnvironmentBRDFApprox( half roughness, half vdotN, half3 specularColor )
 	half2 AB = half2( -1.04, 1.04 ) * a004 + r.zw;
 
 	return specularColor * AB.x + AB.y;
-
 }
+*/
 
 
 

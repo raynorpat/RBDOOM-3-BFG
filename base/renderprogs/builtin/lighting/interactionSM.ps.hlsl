@@ -3,7 +3,7 @@
 
 Doom 3 BFG Edition GPL Source Code
 Copyright (C) 1993-2012 id Software LLC, a ZeniMax Media company.
-Copyright (C) 2013-2020 Robert Beckebans
+Copyright (C) 2013-2021 Robert Beckebans
 Copyright (C) 2020 Panos Karabelas
 
 This file is part of the Doom 3 BFG Edition GPL Source Code ("Doom 3 BFG Edition Source Code").
@@ -29,7 +29,6 @@ If you have questions concerning this license or the applicable additional terms
 */
 
 #include "renderprogs/global.inc.hlsl"
-
 #include "renderprogs/BRDF.inc.hlsl"
 
 
@@ -118,14 +117,15 @@ void main( PS_IN fragment, out PS_OUT result )
 	// traditional very dark Lambert light model used in Doom 3
 	half ldotN = saturate( dot3( localNormal, lightVector ) );
 
-#if defined(USE_HALF_LAMBERT)
+#if 1 //defined(USE_HALF_LAMBERT)
 	// RB: http://developer.valvesoftware.com/wiki/Half_Lambert
 	half halfLdotN = dot3( localNormal, lightVector ) * 0.5 + 0.5;
 	halfLdotN *= halfLdotN;
 
 	// tweak to not loose so many details
-	half lambert = lerp( ldotN, halfLdotN, 0.5 );
-#else
+	half halfLambert = lerp( ldotN, halfLdotN, 0.5 );
+	//half halfLambert = halfLdotN;
+//#else
 	half lambert = ldotN;
 #endif
 
@@ -408,38 +408,18 @@ void main( PS_IN fragment, out PS_OUT result )
 	half3 diffuseColor = baseColor * ( 1.0 - metallic );
 	half3 specularColor = lerp( dielectricColor, baseColor, metallic );
 #else
-	// HACK calculate roughness from D3 gloss maps
-	float Y = dot( LUMINANCE_SRGB.rgb, specMapSRGB.rgb );
-
-	//const float glossiness = clamp( 1.0 - specMapSRGB.r, 0.0, 0.98 );
-	const float glossiness = clamp( pow( Y, 1.0 / 2.0 ), 0.0, 0.98 );
-
-	const float roughness = 1.0 - glossiness;
+	const float roughness = EstimateLegacyRoughness( specMapSRGB.rgb );
 
 	half3 diffuseColor = diffuseMap;
 	half3 specularColor = specMapSRGB.rgb; // RB: should be linear but it looks too flat
 #endif
 
-	//diffuseColor = half3( 1.0 );
 
 	// RB: compensate r_lightScale 3 and the division of Pi
 	//lambert *= 1.3;
 
 	// rpDiffuseModifier contains light color multiplier
 	half3 lightColor = sRGBToLinearRGB( lightProj.xyz * lightFalloff.xyz );
-
-	//lightFalloff.xyz = ditherRGB( lightFalloff.xyz, fragment.texcoord2.xy );
-	//lightProj.xyz = ditherRGB( lightProj.xyz, fragment.texcoord3.xy );
-
-	//half3 lightColor = sRGBToLinearRGB( lightProj.xyz * lightFalloff.xyz );
-
-	//lightColor = ditherChromaticBlueNoise( lightColor, fragment.position.xy, samp6 );
-
-	//lightColor *= sRGBToLinearRGB( lightFalloff.xyz );// * rpDiffuseModifier.xyz;
-	//lightColor = ditherRGB( lightColor, fragment.position.xy );
-
-
-	//lightColor = ditherRGB( lightColor, fragment.position.xy * rpWindowCoord.xy );
 
 	half vdotN = clamp( dot3( viewVector, localNormal ), 0.0, 1.0 );
 	half vdotH = clamp( dot3( viewVector, halfAngleVector ), 0.0, 1.0 );
@@ -458,8 +438,8 @@ void main( PS_IN fragment, out PS_OUT result )
 	// disney GGX
 	float D = ( hdotN * hdotN ) * ( rrrr - 1.0 ) + 1.0;
 	float VFapprox = ( ldotH * ldotH ) * ( roughness + 0.5 );
-	half3 specularBRDF = ( rrrr / ( 4.0 * PI * D * D * VFapprox ) ) * ldotN * reflectColor;
-	//specularBRDF = half3( 0.0 );
+	half3 specularLight = ( rrrr / ( 4.0 * PI * D * D * VFapprox ) ) * ldotN * reflectColor;
+	//specularLight = half3( 0.0 );
 
 #if 0
 	result.color = float4( _half3( VFapprox ), 1.0 );
@@ -470,11 +450,37 @@ void main( PS_IN fragment, out PS_OUT result )
 	//lambert /= PI;
 
 	//half3 diffuseColor = mix( diffuseMap, F0, metal ) * rpDiffuseModifier.xyz;
-	half3 diffuseBRDF = diffuseColor * lambert * ( rpDiffuseModifier.xyz );
+	half3 diffuseLight = diffuseColor * lambert * ( rpDiffuseModifier.xyz );
 
-	float3 color = ( diffuseBRDF + specularBRDF ) * lightColor * fragment.color.rgb * shadow;
+#if 1 //defined(USE_TOON_SHADING)
 
-	//color = ditherChromaticBlueNoise( color, fragment.position.xy, samp6 );
+	// create harsh lighting with visible shading bands
+	float toonLambert = Toon_Lambert( lambert );
+
+	diffuseColor = float3( 1.0 );
+	diffuseLight = diffuseColor * toonLambert * ( rpDiffuseModifier.xyz );
+
+	float toon = 0.5 * smoothstep( 0.66, 0.67, lambert ) + 0.5;
+	float outline = smoothstep( 0.2, 0.21, localNormal.z );
+
+	//float3 color = ( diffuseLight + specularLight ) * lightColor * fragment.color.rgb * shadow * toon * outline;
+
+	float rim =  1.0f - saturate( hdotN );
+	float rimPower = 8.0;
+	float3 rimLight = sRGBToLinearRGB( float3( 0.125 ) * 1.5 ) * lightColor * pow( rim, rimPower ) * ( rpDiffuseModifier.xyz * 2.0 );
+
+	specularLight = float3( 0.0 );
+	//specularLight = saturate( smoothstep( 0.5 - roughness, 0.5 + roughness, specularBRDF ) );
+	//specularLight = float3( clamp( smoothstep( 0.5 - roughness, 0.5 + roughness, Distribution_GGX( hdotN, rr ) ), 0.0, 1.0 ) );
+
+	float3 color = ( ( diffuseLight + specularLight ) * lightColor ) * fragment.color.rgb * shadow + rimLight * fragment.color.rgb;
+	//float3 color = rimColor * fragment.color.rgb;
+#else
+
+	// standard PBR
+	float3 color = ( diffuseLight + specularLight ) * lightColor * fragment.color.rgb * shadow;
+
+#endif
 
 	result.color.rgb = color;
 	result.color.a = 1.0;
