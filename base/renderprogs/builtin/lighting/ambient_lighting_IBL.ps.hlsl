@@ -136,7 +136,7 @@ void main( PS_IN fragment, out PS_OUT result )
 
 #endif
 
-	//diffuseColor = half3( 1.0, 1.0, 1.0 );
+	diffuseColor = half3( 1.0, 1.0, 1.0 );
 	//diffuseColor = half3( 0.0, 0.0, 0.0 );
 
 	// calculate the screen texcoord in the 0.0 to 1.0 range
@@ -189,7 +189,7 @@ void main( PS_IN fragment, out PS_OUT result )
 
 	half3 lightColor = sRGBToLinearRGB( rpAmbientColor.rgb );
 
-#if 1 //defined(USE_TOON_SHADING)
+#if defined( USE_TOON_SHADING )
 
 	// same global vector as in old D3 ambient_lighting
 	float3 lightVector = normalize( float3( 0.0f, 0.5f, 1.0f ) );
@@ -201,7 +201,9 @@ void main( PS_IN fragment, out PS_OUT result )
 
 	half rim =  1.0f - saturate( hdotN );
 	half rimPower = 8.0;
-	half3 rimLight = sRGBToLinearRGB( half3( 0.125 ) * 1.5 ) * irradiance * pow( rim, rimPower );
+	//half3 rimColor = half3( 1.0 );
+	half3 rimColor = irradiance;
+	half3 rimLight = sRGBToLinearRGB( half3( 0.125 ) * 1.5 ) * pow( rim, rimPower ) * rimColor * lightColor * 200.0;
 
 	result.color.rgb = ( ( diffuseLight + specularLight ) * toonLambert * lightColor + rimLight ) * fragment.color.rgb;
 

@@ -403,14 +403,23 @@ void main( PS_IN fragment, out PS_OUT result )
 	const half3 dielectricColor = half3( 0.04 );
 
 	// derive diffuse and specular from albedo(m) base color
+#if defined( USE_TOON_SHADING )
+	const half3 baseColor = half3( 1.0 );
+#else
 	const half3 baseColor = diffuseMap;
+#endif
 
 	half3 diffuseColor = baseColor * ( 1.0 - metallic );
 	half3 specularColor = lerp( dielectricColor, baseColor, metallic );
 #else
 	const float roughness = EstimateLegacyRoughness( specMapSRGB.rgb );
 
+#if defined( USE_TOON_SHADING )
+	half3 diffuseColor = half3( 1.0 );
+#else
 	half3 diffuseColor = diffuseMap;
+#endif
+
 	half3 specularColor = specMapSRGB.rgb; // RB: should be linear but it looks too flat
 #endif
 
@@ -452,26 +461,27 @@ void main( PS_IN fragment, out PS_OUT result )
 	//half3 diffuseColor = mix( diffuseMap, F0, metal ) * rpDiffuseModifier.xyz;
 	half3 diffuseLight = diffuseColor * lambert * ( rpDiffuseModifier.xyz );
 
-#if 1 //defined(USE_TOON_SHADING)
+#if defined( USE_TOON_SHADING )
 
 	// create harsh lighting with visible shading bands
 	float toonLambert = Toon_Lambert( lambert );
 
-	diffuseColor = float3( 1.0 );
+	//diffuseColor = float3( 1.0 );
+	diffuseColor = Toon_HalfTone( fragment.position.xy, float3( toonLambert ) );
 	diffuseLight = diffuseColor * toonLambert * ( rpDiffuseModifier.xyz );
 
-	float toon = 0.5 * smoothstep( 0.66, 0.67, lambert ) + 0.5;
-	float outline = smoothstep( 0.2, 0.21, localNormal.z );
+	//float toon = 0.5 * smoothstep( 0.66, 0.67, lambert ) + 0.5;
+	//float outline = smoothstep( 0.2, 0.21, localNormal.z );
 
 	//float3 color = ( diffuseLight + specularLight ) * lightColor * fragment.color.rgb * shadow * toon * outline;
 
 	float rim =  1.0f - saturate( hdotN );
 	float rimPower = 8.0;
-	float3 rimLight = sRGBToLinearRGB( float3( 0.125 ) * 1.5 ) * lightColor * pow( rim, rimPower ) * ( rpDiffuseModifier.xyz * 2.0 );
+	float3 rimColor = lightColor;
+	float3 rimLight = sRGBToLinearRGB( float3( 0.125 ) * 1.5 ) * pow( rim, rimPower ) * rimColor * ( rpDiffuseModifier.xyz * 1.0 );
 
-	specularLight = float3( 0.0 );
-	//specularLight = saturate( smoothstep( 0.5 - roughness, 0.5 + roughness, specularBRDF ) );
-	//specularLight = float3( clamp( smoothstep( 0.5 - roughness, 0.5 + roughness, Distribution_GGX( hdotN, rr ) ), 0.0, 1.0 ) );
+	//specularLight = float3( 0.0 );
+	specularLight = ( rrrr / ( 4.0 * PI * D * D * VFapprox ) ) * toonLambert * reflectColor;
 
 	float3 color = ( ( diffuseLight + specularLight ) * lightColor ) * fragment.color.rgb * shadow + rimLight * fragment.color.rgb;
 	//float3 color = rimColor * fragment.color.rgb;

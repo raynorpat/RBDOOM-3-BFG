@@ -120,7 +120,7 @@ void main( PS_IN fragment, out PS_OUT result )
 	half rimPower = 8.0;
 	half3 rimLight = sRGBToLinearRGB( half3( 0.125 ) * 1.2 ) * lightColor * pow( rim, rimPower );
 
-#if 1 //defined(USE_TOON_SHADING)
+#if defined( USE_TOON_SHADING )
 
 	diffuseColor = float3( 0.0 );
 	diffuseLight = diffuseColor * ( rpDiffuseModifier.xyz * 0.5f );

@@ -516,6 +516,11 @@ idStr idRenderProgManager::StripDeadCode( const idStr& in, const char* name, con
 		src.AddDefine( "DEBUG_PBR" );
 	}
 
+	//if( r_useHalfLambertLighting.GetBool() )
+	{
+		src.AddDefine( "USE_TOON_SHADING" );
+	}
+
 #if defined( USE_VULKAN )
 	src.AddDefine( "USE_VULKAN" );
 #endif

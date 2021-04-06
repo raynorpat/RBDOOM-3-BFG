@@ -141,6 +141,87 @@ float Toon_Lambert( float ldotN )
 	return toonLambert;
 }
 
+#define AMBIENT 0.1
+#define EDGE_THICKNESS 0.015
+#define SHADES 4.0
+
+float3 Toon_ColorBands( float ldotN, float3 lightColor )
+{
+	float3 color = float3( AMBIENT );
+
+	float intensity = ldotN;
+
+	intensity = ceil( intensity * SHADES ) / SHADES;
+	intensity = max( intensity, AMBIENT );
+	color = lightColor * intensity;
+
+	return color;
+}
+
+// https://www.shadertoy.com/view/wdSGDw
+
+float roundNearest( float f, float size )
+{
+	return round( f / size ) * size;
+}
+
+// slope = f'(x) at x = 0;
+float sigmoid( float f, float slope )
+{
+	return tanh( slope * f );
+}
+
+float3 Toon_HalfTone( float2 fragPosition, float3 color )
+{
+	// Normalized pixel coordinates (from 0 to 1)
+	vec2 uv = fragPosition.xy * rpWindowCoord.xy;
+	float ratio = ( 1.0 / rpWindowCoord.x ) / ( 1.0 / rpWindowCoord.y );
+
+	// Time varying pixel color
+	//vec3 col = 0.5 + 0.5*cos(iTime+uv.xyx+vec3(0,2,4));
+	mat2 t;
+	// Transform to isometric:
+	//t[0] = vec2(1, 0);
+	//t[1] = vec2(0.5, 0.866);
+	// Rotate 22.5 degrees
+	t[0] = vec2( 0.924, 0.323 ); // cos, sin
+	t[1] = vec2( -0.323, 0.924 ); // -sin, cos
+	float scale = ( uv.x + 1. ) / 2. + ( uv.y + 1. ) / 3.;
+	//float scale = length(uv.xy - vec2(-1, 1)) + 1.;
+	//float scale = 1.;
+	//t *= scale;
+	mat2 tInv = inverse( t );
+	vec2 pIso = tInv * fragPosition.xy;
+
+	float size = 7.0;
+	float stopX = roundNearest( pIso.x, size );
+	float stopY = roundNearest( pIso.y, size );
+
+	vec2 nearestIso = vec2( stopX, stopY );
+
+	float real = length( color ) / sqrt( 3.0 );
+
+	// rpJitterTexOffset.w is frameTime % 64
+	//vec3 hue = 0.5 + 0.5 * cos( rpJitterTexOffset.w + uv.xyx + vec3( 0.0, 2.0, 4.0 ) );
+	float3 hue = float3( 1.0 );
+
+	float3 col;
+
+	float light = 1.0;
+	float dark = real;
+
+	float d = abs( distance( t * nearestIso, t * pIso ) );
+	float pivot = d - ( 1.0 - real ) * size / 1.7;
+	float alpha = sigmoid( pivot, 2.0 ); // sigmoid for AA
+
+	float lum = alpha * light + ( 1.0 - alpha ) * dark;
+	//lum = real;
+	col = lum * hue;
+
+	// Output to screen
+	return col;
+}
+
 // Environment BRDF approximations
 // see s2013_pbs_black_ops_2_notes.pdf
 /*
