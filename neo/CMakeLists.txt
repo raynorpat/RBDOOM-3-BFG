@@ -74,8 +74,10 @@ endif()
 
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "(x86)|(X86)|(amd64)|(AMD64)")
 	option(USE_INTRINSICS_SSE "Compile using SSE intrinsics (e.g mmx, sse, msse2)" ON)
+	option(USE_INTRINSICS_AVX "Compile using AVX intrinsics" ON)
 else()
 	option(USE_INTRINSICS_SSE "Compile using SSE intrinsics (e.g mmx, sse, msse2)" OFF)
+	option(USE_INTRINSICS_AVX "Compile using AVX intrinsics" OFF)
 endif()
 
 if(FFMPEG AND BINKDEC)
@@ -294,6 +296,9 @@ endif()
 
 if (USE_INTRINSICS_SSE)
 	add_definitions(-DUSE_INTRINSICS_SSE)
+endif()
+if (USE_INTRINSICS_AVX)
+	add_definitions(-DUSE_INTRINSICS_AVX)
 endif()
 
 #if(STANDALONE)

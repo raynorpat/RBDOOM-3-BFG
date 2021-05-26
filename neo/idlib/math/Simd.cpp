@@ -36,6 +36,7 @@ If you have questions concerning this license or the applicable additional terms
 
 #include "Simd_Generic.h"
 #include "Simd_SSE.h"
+#include "Simd_AVX.h"
 
 idSIMDProcessor*		processor = NULL;			// pointer to SIMD processor
 idSIMDProcessor* 	generic = NULL;				// pointer to generic SIMD implementation
@@ -77,6 +78,13 @@ void idSIMD::InitProcessor( const char* module, bool forceGeneric )
 
 		if( processor == NULL )
 		{
+#if defined(USE_INTRINSICS_AVX)
+			if( cpuid & CPUID_AVX )
+			{
+				processor = new( TAG_MATH ) idSIMD_AVX;
+			}
+			else
+#endif
 #if defined(USE_INTRINSICS_SSE)
 			if( ( cpuid & CPUID_MMX ) && ( cpuid & CPUID_SSE ) )
 			{
@@ -1389,6 +1397,18 @@ void idSIMD::Test_f( const idCmdArgs& args )
 
 		argString.Replace( " ", "" );
 
+#if defined(USE_INTRINSICS_AVX)
+		if( idStr::Icmp( argString, "AVX" ) == 0 )
+		{
+			if ( !( cpuid & CPUID_AVX ) )
+			{
+				common->Printf( "CPU does not support AVX\n" );
+				return;
+			}
+			p_simd = new(TAG_MATH) idSIMD_AVX;
+		}
+		else
+#endif
 #if defined(USE_INTRINSICS_SSE)
 		if( idStr::Icmp( argString, "SSE" ) == 0 )
 		{
@@ -1402,7 +1422,7 @@ void idSIMD::Test_f( const idCmdArgs& args )
 		else
 #endif
 		{
-			common->Printf( "invalid argument, use: MMX, 3DNow, SSE, SSE2, SSE3, AltiVec\n" );
+			common->Printf( "invalid argument, use: SSE, AVX\n" );
 			return;
 		}
 	}
