@@ -1478,6 +1478,10 @@ void Sys_Init()
 		{
 			win32.sys_arch.SetString( "Win8.1" );
 		}
+		else if( win32.osversion.dwMajorVersion == 10 && win32.osversion.dwMinorVersion == 0 )
+		{
+			win32.sys_arch.SetString( "Win10" );
+		}
 		else
 		{
 			win32.sys_arch.SetString( "Unknown NT variant" );
@@ -1575,9 +1579,9 @@ void Sys_Init()
 		{
 			string += "SSE3 & ";
 		}
-		if( win32.cpuid & CPUID_HTT )
+		else if( win32.cpuid & CPUID_AVX )
 		{
-			string += "HTT & ";
+			string += "AVX & ";
 		}
 		string.StripTrailing( " & " );
 		string.StripTrailing( " with " );
@@ -1624,9 +1628,9 @@ void Sys_Init()
 			{
 				id |= CPUID_SSE3;
 			}
-			else if( token.Icmp( "htt" ) == 0 )
+			else if( token.Icmp( "avx" ) == 0 )
 			{
-				id |= CPUID_HTT;
+				id |= CPUID_AVX;
 			}
 		}
 		if( id == CPUID_NONE )

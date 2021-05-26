@@ -88,7 +88,7 @@ double Sys_GetClockTicks()
 		: "=r"( lo ), "=r"( hi ) );
 	return ( double ) lo + ( double ) 0xFFFFFFFF * hi;
 #else
-#error unsupported CPU
+	#error unsupported CPU
 #endif
 
 #endif
@@ -198,9 +198,18 @@ good:
 CPUID
 ================
 */
-// RB: no checks on Win64
-#if !defined(_WIN64)
-static void CPUID( int func, unsigned regs[4] ) {
+static void CPUID( int func, unsigned regs[4] )
+{
+#if defined(_MSC_VER) && defined(_WIN64)
+	int regValues[4];
+
+	__cpuid(regValues, func);
+
+	regs[_REG_EAX] = regValues[0];
+	regs[_REG_EBX] = regValues[1];
+	regs[_REG_ECX] = regValues[2];
+	regs[_REG_EDX] = regValues[3];
+#else
 	unsigned regEAX, regEBX, regECX, regEDX;
 
 	__asm pusha
@@ -217,8 +226,8 @@ static void CPUID( int func, unsigned regs[4] ) {
 	regs[_REG_EBX] = regEBX;
 	regs[_REG_ECX] = regECX;
 	regs[_REG_EDX] = regEDX;
-}
 #endif
+}
 
 /*
 ================
@@ -387,6 +396,45 @@ static bool HasSSE3() {
 
 /*
 ================
+HasAVX
+================
+*/
+static bool HasAVX()
+{
+	unsigned regs[4];
+	OSVERSIONINFOEX osvi;
+
+	// Check for Windows 7 SP1 or later support
+	ZeroMemory( &osvi, sizeof( osvi ) );
+	osvi.dwOSVersionInfoSize = sizeof( osvi );
+	GetVersionEx( ( OSVERSIONINFO * )&osvi );
+	if ( osvi.dwMajorVersion < 6 )
+	{
+		return false;
+	}
+	if ( osvi.dwMajorVersion == 6 && osvi.dwMinorVersion < 1 )
+	{
+		return false;
+	}
+	if ( osvi.dwMajorVersion == 6 && osvi.dwMinorVersion == 1 && osvi.wServicePackMajor < 1 )
+	{
+		return false;
+	}
+
+	// get CPU feature bits
+	CPUID( 1, regs );
+
+	// bit 28 of ECX denotes AVX existence
+	if ( regs[_REG_ECX] & ( 1 << 28 ) )
+	{
+		return true;
+	}
+
+	return false;
+}
+
+/*
+================
 LogicalProcPerPhysicalProc
 ================
 */
@@ -528,33 +576,6 @@ int CPUCount( int &logicalNum, int &physicalNum ) {
 		}
 	}
 	return statusFlag;
-}
-#endif
-
-/*
-================
-HasHTT
-================
-*/
-// RB: no checks on Win64
-#if !defined(_WIN64)
-static bool HasHTT() {
-	unsigned regs[4];
-	int logicalNum, physicalNum, HTStatusFlag;
-
-	// get CPU feature bits
-	CPUID( 1, regs );
-
-	// bit 28 of EDX denotes HTT existence
-	if ( !( regs[_REG_EDX] & ( 1 << 28 ) ) ) {
-		return false;
-	}
-
-	HTStatusFlag = CPUCount( logicalNum, physicalNum );
-	if ( HTStatusFlag != HT_ENABLED ) {
-		return false;
-	}
-	return true;
 }
 #endif
 
@@ -778,6 +799,12 @@ cpuid_t Sys_GetCPUId()
 	flags |= CPUID_SSE;
 	flags |= CPUID_SSE2;
 
+	// check for Advanced Vector Extensions aka Sandy Bridge New Extensions
+	if( HasAVX() )
+	{
+		flags |= CPUID_AVX;
+	}
+
 	return (cpuid_t)flags;
 #else
 	int flags;
@@ -819,9 +846,9 @@ cpuid_t Sys_GetCPUId()
 		flags |= CPUID_SSE3;
 	}
 
-	// check for Hyper-Threading Technology
-	if ( HasHTT() ) {
-		flags |= CPUID_HTT;
+	// check for Advanced Vector Extensions aka Sandy Bridge New Extensions
+	if ( HasAVX() ) {
+		flags |= CPUID_AVX;
 	}
 
 	// check for Conditional Move (CMOV) and fast floating point comparison (FCOMI) instructions

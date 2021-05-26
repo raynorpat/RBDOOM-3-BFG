@@ -53,7 +53,7 @@ enum cpuid_t
 	CPUID_SSE2							= 0x00080,	// Streaming SIMD Extensions 2
 	CPUID_SSE3							= 0x00100,	// Streaming SIMD Extentions 3 aka Prescott's New Instructions
 	CPUID_ALTIVEC						= 0x00200,	// AltiVec
-	CPUID_HTT							= 0x01000,	// Hyper-Threading Technology
+	CPUID_AVX							= 0x01000,	// Advanced Vector Extensions aka Sandy Bridge New Extensions
 	CPUID_CMOV							= 0x02000,	// Conditional Move (CMOV) and fast floating point comparison (FCOMI) instructions
 	CPUID_FTZ							= 0x04000,	// Flush-To-Zero mode (denormal results are flushed to zero)
 	CPUID_DAZ							= 0x08000,	// Denormals-Are-Zero mode (denormal source operands are set to zero)

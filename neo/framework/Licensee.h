@@ -78,5 +78,5 @@ If you have questions concerning this license or the applicable additional terms
 #define STEAMPATH_APPID					"208200"
 #define STEAMPATH_NAME					"DOOM 3 BFG Edition"
 
-// raynorpat: GOG.com Galaxy Launcher Game ID for figuring out Steam base path
+// raynorpat: GOG.com Galaxy Launcher Game ID for figuring out GOG base path
 #define GOGPATH_ID						"1733124578"

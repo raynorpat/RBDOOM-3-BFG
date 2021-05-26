@@ -39,7 +39,6 @@ If you have questions concerning this license or the applicable additional terms
 
 #include <SDL_cpuinfo.h>
 
-
 #pragma warning(disable:4740)	// warning C4740: flow in or out of inline asm code suppresses global optimization
 #pragma warning(disable:4731)	// warning C4731: 'XXX' : frame pointer register 'ebx' modified by inline assembly code
 
@@ -89,7 +88,7 @@ double Sys_GetClockTicks()
 		: "=r"( lo ), "=r"( hi ) );
 	return ( double ) lo + ( double ) 0xFFFFFFFF * hi;
 #else
-#error unsupported CPU
+	#error unsupported CPU
 #endif
 	// RB end
 }
@@ -184,10 +183,7 @@ Sys_GetCPUId
 */
 cpuid_t Sys_GetCPUId()
 {
-	int flags;
-
-	// check for an AMD
-	flags = CPUID_GENERIC;
+	int flags = CPUID_GENERIC;
 
 	// check for Multi Media Extensions
 	if( SDL_HasMMX() )
@@ -221,13 +217,15 @@ cpuid_t Sys_GetCPUId()
 	}
 #endif
 
-	/*
-	// check for Hyper-Threading Technology
-	if( HasHTT() )
+	// check for Advanced Vector Extensions aka Sandy Bridge New Extensions
+#if SDL_VERSION_ATLEAST(2,0,2)
+	if( SDL_HasAVX() )
 	{
-		flags |= CPUID_HTT;
+		flags |= CPUID_AVX;
 	}
+#endif
 
+	/*
 	// check for Conditional Move (CMOV) and fast floating point comparison (FCOMI) instructions
 	if( HasCMOV() )
 	{
